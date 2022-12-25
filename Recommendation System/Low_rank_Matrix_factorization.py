@@ -1,10 +1,7 @@
 import pandas as pd 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy import sparse 
 
 class MF(object):
-    """docstring for CF"""
     def __init__(self, Y_data, K, lam = 0.1, Xinit = None, Winit = None, learning_rate = 0.5, 
                 max_iter = 1000, print_every = 100, user_based = 1):
         self.Y_raw_data = Y_data
@@ -26,7 +23,7 @@ class MF(object):
         
         if Winit is None: # new
             self.W = np.random.randn(K, self.n_users)
-        else: # from daved data
+        else: # from saved data
             self.W = Winit
             
         self.Y_normalize = self.Y_raw_data.copy()   # normalized data, update later in normalized_Y function
@@ -54,7 +51,7 @@ class MF(object):
         for i in range(self.n_ratings):
             # user, item, rating
             n, m, rate = int(self.Y_normalize[i, 0]), int(self.Y_normalize[i, 1]), self.Y_normalize[i, 2]
-            L += 0.5 * (rate - self.X[m, :].dot(self.W[:, n])) ** 2         # 1/2 (r - item * user)^2
+            L += 0.5 * (self.X[m, :].dot(self.W[:, n]) - rate) ** 2         # 1/2 (r - item * user)^2
         
         L /= self.n_ratings  # take average
         L += 0.5 * self.lam * (np.linalg.norm(self.X, 'fro') + np.linalg.norm(self.W, 'fro'))       # regularization
@@ -81,16 +78,16 @@ class MF(object):
     
     def updateX(self):
         for m in range(self.n_items):
-            user_ids, ratings = self.get_users_who_rate_item(m)
+            user_ids, rate = self.get_users_who_rate_item(m)
             Wm = self.W[:, user_ids]
-            grad_xm = -(ratings - self.X[m, :].dot(Wm)).dot(Wm.T)/self.n_ratings + self.lam * self.X[m, :]    # gradient
+            grad_xm = (self.X[m, :].dot(Wm) - rate).dot(Wm.T)/self.n_ratings + self.lam * self.X[m, :]    # gradient
             self.X[m, :] -= self.learning_rate * grad_xm.reshape((self.K,))
     
     def updateW(self):
         for n in range(self.n_users):
-            item_ids, ratings = self.get_items_rated_by_user(n)
+            item_ids, rate = self.get_items_rated_by_user(n)
             Xn = self.X[item_ids, :]
-            grad_wn = - Xn.T.dot(ratings - Xn.dot(self.W[:, n]))/self.n_ratings + self.lam * self.W[:, n] # gradient
+            grad_wn = Xn.T.dot(Xn.dot(self.W[:, n]) - rate)/self.n_ratings + self.lam * self.W[:, n] # gradient
             self.W[:, n] -= self.learning_rate * grad_wn.reshape((self.K,))
     
     def fit(self):
