@@ -58,8 +58,9 @@ def multi_svm_GD(X, y, Winit, reg=1e-4, lr=1e-7, batch_size = 100, num_iters = 1
         y_batch = y[idx]
 
         loss_history[it], dW = svm_loss_vectorized(W, X_batch, y_batch, reg)
-
         W -= lr*dW 
+        if print_every == False:
+            continue
         if it % print_every == 1:
             print(f'iter {it}/{num_iters}, loss = {loss_history[it]}')
 
